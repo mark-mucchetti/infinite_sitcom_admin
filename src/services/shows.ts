@@ -39,20 +39,40 @@ export const showsApi = {
   },
 
   // Get single show by ID
-  get: (id: string): Promise<ApiResponse<Show>> =>
-    apiClient.get(`/shows/${id}`),
+  get: async (id: string): Promise<ApiResponse<Show>> => {
+    const response = await apiClient.get(`/shows/${id}`)
+    return {
+      data: response,
+      success: true
+    }
+  },
 
   // Create show using AI generation
-  generateAI: (data: CreateShowRequest): Promise<ApiResponse<Show>> =>
-    apiClient.post('/shows/generate', data),
+  generateAI: async (data: CreateShowRequest): Promise<ApiResponse<Show>> => {
+    const response = await apiClient.post('/shows/generate', data)
+    return {
+      data: response,
+      success: true
+    }
+  },
 
   // Update show details
-  update: (id: string, data: UpdateShowRequest): Promise<ApiResponse<Show>> =>
-    apiClient.patch(`/shows/${id}`, data),
+  update: async (id: string, data: UpdateShowRequest): Promise<ApiResponse<Show>> => {
+    const response = await apiClient.patch(`/shows/${id}`, data)
+    return {
+      data: response,
+      success: true
+    }
+  },
 
   // Delete show (cascades to episodes and assets)
-  delete: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.delete(`/shows/${id}`),
+  delete: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await apiClient.delete(`/shows/${id}`)
+    return {
+      data: response,
+      success: true
+    }
+  },
 
   // Get show characters
   getCharacters: (id: string) =>

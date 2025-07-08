@@ -10,6 +10,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import CreateShowForm from '@/components/forms/CreateShowForm'
+import EditShowForm from '@/components/forms/EditShowForm'
 import { formatDate } from '@/utils/formatters'
 import { showsApi } from '@/services/shows'
 import { useUIStore } from '@/store/ui'
@@ -17,7 +18,9 @@ import { useUIStore } from '@/store/ui'
 export default function Shows() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showToEdit, setShowToEdit] = useState<any>(null)
   const [showToDelete, setShowToDelete] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   
@@ -35,6 +38,17 @@ export default function Shows() {
 
   const handleCreateSuccess = () => {
     setShowCreateModal(false)
+    refetch()
+  }
+
+  const handleEditClick = (show: any) => {
+    setShowToEdit(show)
+    setShowEditModal(true)
+  }
+
+  const handleEditSuccess = () => {
+    setShowEditModal(false)
+    setShowToEdit(null)
     refetch()
   }
 
@@ -156,7 +170,11 @@ export default function Shows() {
                           View
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEditClick(show)}
+                      >
                         Edit
                       </Button>
                       <Button 
@@ -197,6 +215,28 @@ export default function Shows() {
           onSuccess={handleCreateSuccess}
           onCancel={() => setShowCreateModal(false)}
         />
+      </Modal>
+
+      {/* Edit Show Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          setShowToEdit(null)
+        }}
+        title="Edit Show"
+        size="lg"
+      >
+        {showToEdit && (
+          <EditShowForm
+            show={showToEdit}
+            onSuccess={handleEditSuccess}
+            onCancel={() => {
+              setShowEditModal(false)
+              setShowToEdit(null)
+            }}
+          />
+        )}
       </Modal>
 
       <ConfirmDialog

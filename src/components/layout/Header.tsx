@@ -1,6 +1,7 @@
 import { Menu } from '@headlessui/react'
 import { Bars3Icon, BellIcon, UserCircleIcon } from '@heroicons/react/24/outline'
 import Breadcrumbs from './Breadcrumbs'
+import { EnvironmentIndicator } from '../ui/EnvironmentIndicator'
 
 export default function Header() {
 
@@ -17,6 +18,9 @@ export default function Header() {
           <Breadcrumbs />
         </div>
         <div className="ml-4 flex items-center md:ml-6 space-x-4">
+          {/* Environment indicator */}
+          <EnvironmentIndicator />
+          
           {/* Notifications */}
           <button
             type="button"

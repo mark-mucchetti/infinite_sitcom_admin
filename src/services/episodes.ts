@@ -54,8 +54,13 @@ export const episodesApi = {
   },
 
   // Get single episode by ID
-  get: (id: string): Promise<ApiResponse<Episode>> =>
-    apiClient.get(`/episodes/${id}`),
+  get: async (id: string): Promise<ApiResponse<Episode>> => {
+    const response = await apiClient.get(`/episodes/${id}`)
+    return {
+      data: response,
+      success: true
+    }
+  },
 
   // Create episode manually
   create: (data: CreateEpisodeRequest): Promise<ApiResponse<Episode>> =>
@@ -74,33 +79,51 @@ export const episodesApi = {
     apiClient.delete(`/episodes/${id}`),
 
   // Script generation endpoints
-  generateScript: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/generate-script`),
+  generateScript: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/generate-script`)
+    return { data: response, success: true }
+  },
 
-  generateBeatSheet: (id: string, prompt?: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/generate-beat-sheet`, prompt ? { prompt } : {}),
+  generateBeatSheet: async (id: string, prompt?: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/generate-beat-sheet`, prompt ? { prompt } : {})
+    return { data: response, success: true }
+  },
 
-  generateScenes: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/generate-all-scenes`),
+  generateScenes: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/generate-all-scenes`)
+    return { data: response, success: true }
+  },
 
-  editorialPass: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/editorial-pass`),
+  editorialPass: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/editorial-pass`)
+    return { data: response, success: true }
+  },
 
-  generateTeleplay: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/generate-teleplay`),
+  generateTeleplay: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/generate-teleplay`)
+    return { data: response, success: true }
+  },
 
   // Audio generation endpoints
-  generateAudio: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/generate-full-audio`),
+  generateAudio: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/generate-full-audio`)
+    return { data: response, success: true }
+  },
 
-  generateAudioManifest: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/generate-audio-manifest`),
+  generateAudioManifest: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/generate-audio-manifest`)
+    return { data: response, success: true }
+  },
 
-  generateAudioFiles: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/generate-audio-files`),
+  generateAudioFiles: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/generate-audio-files`)
+    return { data: response, success: true }
+  },
 
-  assembleEpisode: (id: string): Promise<ApiResponse<void>> =>
-    apiClient.post(`/episodes/${id}/assemble-episode`),
+  assembleEpisode: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/assemble-episode`)
+    return { data: response, success: true }
+  },
 
   // Status and audit
   audit: (id: string) =>

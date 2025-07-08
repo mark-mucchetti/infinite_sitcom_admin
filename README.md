@@ -1,5 +1,16 @@
 # WPVI Admin Interface
 
+#### API Startup Instructions
+```bash
+# Start API server
+cd /Users/markm/Documents/src/wpvi/backend
+poetry run python run_api.py
+
+# Test mode ALWAYS USE TEST MODE!! ALWAYS USE TEST MODE!!!!!
+WPVI_TEST_MODE=true poetry run python run_api.py
+```
+
+
 A modern React-based administration interface for managing WPVI sitcom generation.
 
 ## Features

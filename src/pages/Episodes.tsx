@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
 import { useEpisodes } from '@/hooks/useEpisodes'
 import { useShows } from '@/hooks/useShows'
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHeaderCell } from '@/components/ui/Table'
@@ -168,13 +169,26 @@ export default function Episodes() {
                   </TableCell>
                   <TableCell>{episode.created_at ? formatDate(episode.created_at) : 'N/A'}</TableCell>
                   <TableCell>
-                    <div className="flex space-x-2">
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        Generate
-                      </Button>
+                    <div className="flex space-x-1">
+                      <Link to={`/episodes/${episode.id}/script-generation`}>
+                        <Button variant="ghost" size="sm">
+                          Script
+                        </Button>
+                      </Link>
+                      {(episode.script_generated === true || episode.script_generated === 'true') && (
+                        <>
+                          <Link to={`/episodes/${episode.id}/script-review`}>
+                            <Button variant="ghost" size="sm">
+                              Review
+                            </Button>
+                          </Link>
+                          <Link to={`/episodes/${episode.id}/audio-generation`}>
+                            <Button variant="ghost" size="sm">
+                              Audio
+                            </Button>
+                          </Link>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

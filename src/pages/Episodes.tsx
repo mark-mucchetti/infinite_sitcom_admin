@@ -8,12 +8,15 @@ import Input from '@/components/ui/Input'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import EmptyState from '@/components/ui/EmptyState'
 import StatusBadge from '@/components/ui/StatusBadge'
+import Modal from '@/components/ui/Modal'
+import CreateEpisodeForm from '@/components/forms/CreateEpisodeForm'
 import { formatDate, formatEpisodeNumber } from '@/utils/formatters'
 
 export default function Episodes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedShow, setSelectedShow] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const { episodes, loading, error, total, refetch } = useEpisodes({
     page: 1,
@@ -27,6 +30,11 @@ export default function Episodes() {
 
   const handleSearch = (value: string) => {
     setSearchTerm(value)
+  }
+
+  const handleCreateSuccess = () => {
+    setShowCreateModal(false)
+    refetch()
   }
 
   if (error) {
@@ -53,7 +61,10 @@ export default function Episodes() {
           </p>
         </div>
         <div className="mt-4 flex md:ml-4 md:mt-0">
-          <Button className="inline-flex items-center">
+          <Button 
+            className="inline-flex items-center"
+            onClick={() => setShowCreateModal(true)}
+          >
             <PlusIcon className="h-4 w-4 mr-2" />
             Create Episode
           </Button>
@@ -175,7 +186,7 @@ export default function Episodes() {
             title="No episodes found"
             description="Create your first episode to get started with the AI generation process."
             action={
-              <Button>
+              <Button onClick={() => setShowCreateModal(true)}>
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Create Your First Episode
               </Button>
@@ -183,6 +194,18 @@ export default function Episodes() {
           />
         )}
       </div>
+
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Episode"
+        size="lg"
+      >
+        <CreateEpisodeForm
+          onSuccess={handleCreateSuccess}
+          onCancel={() => setShowCreateModal(false)}
+        />
+      </Modal>
     </div>
   )
 }

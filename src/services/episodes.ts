@@ -11,6 +11,18 @@ export interface EpisodeListParams {
 }
 
 export interface CreateEpisodeRequest {
+  show_id: string
+  season_number: number
+  episode_number: number
+  title: string
+  logline: string
+  a_plot: string
+  b_plot: string
+  c_plot?: string
+  theme: string
+}
+
+export interface CreateEpisodeAIRequest {
   prompt: string
   season_finale?: boolean
 }
@@ -45,8 +57,12 @@ export const episodesApi = {
   get: (id: string): Promise<ApiResponse<Episode>> =>
     apiClient.get(`/episodes/${id}`),
 
+  // Create episode manually
+  create: (data: CreateEpisodeRequest): Promise<ApiResponse<Episode>> =>
+    apiClient.post('/episodes', data),
+
   // Create episode using AI generation
-  generateAI: (showId: string, data: CreateEpisodeRequest): Promise<ApiResponse<Episode>> =>
+  generateAI: (showId: string, data: CreateEpisodeAIRequest): Promise<ApiResponse<Episode>> =>
     apiClient.post(`/episodes/generate?show_id=${showId}`, data),
 
   // Update episode details

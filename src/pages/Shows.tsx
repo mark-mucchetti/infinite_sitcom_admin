@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { useShows } from '@/hooks/useShows'
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHeaderCell } from '@/components/ui/Table'
@@ -7,17 +8,26 @@ import Input from '@/components/ui/Input'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import EmptyState from '@/components/ui/EmptyState'
 import Modal from '@/components/ui/Modal'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import CreateShowForm from '@/components/forms/CreateShowForm'
 import { formatDate } from '@/utils/formatters'
+import { showsApi } from '@/services/shows'
+import { useUIStore } from '@/store/ui'
 
 export default function Shows() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showToDelete, setShowToDelete] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  
   const { shows, loading, error, total, refetch } = useShows({
     page: 1,
     limit: 20,
     search: searchTerm || undefined
   })
+  
+  const { showToast } = useUIStore()
 
   const handleSearch = (value: string) => {
     setSearchTerm(value)
@@ -26,6 +36,43 @@ export default function Shows() {
   const handleCreateSuccess = () => {
     setShowCreateModal(false)
     refetch()
+  }
+
+  const handleDeleteClick = (showId: string) => {
+    setShowToDelete(showId)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!showToDelete) return
+
+    try {
+      setDeleteLoading(true)
+      await showsApi.delete(showToDelete)
+      
+      showToast({
+        type: 'success',
+        title: 'Show deleted',
+        message: 'The show and all its episodes have been deleted successfully.'
+      })
+      
+      refetch()
+      setShowDeleteDialog(false)
+      setShowToDelete(null)
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Delete failed',
+        message: error instanceof Error ? error.message : 'Failed to delete show'
+      })
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false)
+    setShowToDelete(null)
   }
 
   if (error) {
@@ -104,11 +151,21 @@ export default function Shows() {
                   <TableCell>{show.created_at ? formatDate(show.created_at) : `${show.year}`}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
+                      <Link to={`/shows/${show.id}`}>
+                        <Button variant="ghost" size="sm">
+                          View
+                        </Button>
+                      </Link>
                       <Button variant="ghost" size="sm">
                         Edit
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteClick(show.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Delete
                       </Button>
                     </div>
                   </TableCell>
@@ -141,6 +198,18 @@ export default function Shows() {
           onCancel={() => setShowCreateModal(false)}
         />
       </Modal>
+
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Show"
+        message="Are you sure you want to delete this show? This will permanently delete the show and all its episodes, characters, and generated content. This action cannot be undone."
+        confirmText="Delete Show"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deleteLoading}
+      />
     </div>
   )
 }

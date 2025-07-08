@@ -7,6 +7,9 @@ export interface Show {
   class_setting: string
   geographic_setting: string
   theme: string
+  logline?: string
+  characters_generated: string | boolean
+  bible_generated: string | boolean
   created_at?: string
   updated_at?: string
 }

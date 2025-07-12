@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PlusIcon, FunnelIcon, SparklesIcon, PencilIcon, ShieldCheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, FunnelIcon, SparklesIcon, PencilIcon, ShieldCheckIcon, CheckCircleIcon, LockClosedIcon, LockOpenIcon } from '@heroicons/react/24/outline'
 import { Link } from 'react-router-dom'
 import { useEpisodes } from '@/hooks/useEpisodes'
 import { useShows } from '@/hooks/useShows'
@@ -27,6 +27,7 @@ export default function Episodes() {
   const [auditData, setAuditData] = useState<any>(null)
   const [isAuditing, setIsAuditing] = useState(false)
   const [isFinalizing, setIsFinalizing] = useState(false)
+  const [isUnfinalizing, setIsUnfinalizing] = useState(false)
 
   const { episodes, loading, error, total, refetch, setParams } = useEpisodes({
     page: 1,
@@ -80,6 +81,30 @@ export default function Episodes() {
       })
     } finally {
       setIsFinalizing(false)
+    }
+  }
+
+  const handleUnfinalize = async () => {
+    if (!selectedEpisode) return
+    
+    setIsUnfinalizing(true)
+    try {
+      const response = await episodesApi.unfinalize(selectedEpisode.id)
+      showToast({
+        type: 'success',
+        title: 'Episode Unfinalized',
+        message: response.data?.message || 'Episode has been unfinalized and is now editable'
+      })
+      setShowAuditModal(false)
+      refetch()
+    } catch (error: any) {
+      showToast({
+        type: 'error',
+        title: 'Unfinalization Failed',
+        message: error.message || 'Failed to unfinalize episode'
+      })
+    } finally {
+      setIsUnfinalizing(false)
     }
   }
 
@@ -212,7 +237,6 @@ export default function Episodes() {
             <option value="pending">Pending</option>
             <option value="processing">Processing</option>
             <option value="completed">Completed</option>
-            <option value="finalized">Finalized</option>
             <option value="failed">Failed</option>
           </select>
 
@@ -231,19 +255,19 @@ export default function Episodes() {
             <LoadingSpinner size="lg" />
           </div>
         ) : episodes.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Episode</TableHeaderCell>
-                <TableHeaderCell>Title</TableHeaderCell>
-                <TableHeaderCell>Show</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>Script</TableHeaderCell>
-                <TableHeaderCell>Audio</TableHeaderCell>
-                <TableHeaderCell>Created</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHeaderCell className="min-w-[80px]">Episode</TableHeaderCell>
+                  <TableHeaderCell className="min-w-[200px]">Title</TableHeaderCell>
+                  <TableHeaderCell className="min-w-[120px]">Show</TableHeaderCell>
+                  <TableHeaderCell className="min-w-[80px]">Status</TableHeaderCell>
+                  <TableHeaderCell className="min-w-[80px]">Script</TableHeaderCell>
+                  <TableHeaderCell className="min-w-[80px]">Audio</TableHeaderCell>
+                  <TableHeaderCell className="min-w-[140px] sticky right-0 bg-white">Actions</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {episodes.map((episode) => (
                 <TableRow key={episode.id} className="hover:bg-gray-50">
@@ -262,7 +286,29 @@ export default function Episodes() {
                     {showOptions.find(s => s.id === episode.show_id)?.name || 'Unknown'}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={episode.status} />
+                    <div className="flex items-center space-x-2">
+                      <StatusBadge status={episode.status} />
+                      {((episode.script_generated === true || episode.script_generated === 'true') && 
+                        (episode.assets_generated === true || episode.assets_generated === 'true')) && (
+                        episode.status === 'completed' ? (
+                          <button
+                            onClick={() => handleAudit(episode)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Episode is finalized and locked - click to unfinalize"
+                          >
+                            <LockClosedIcon className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleAudit(episode)}
+                            className="text-green-600 hover:text-green-800"
+                            title="Episode is ready to finalize - click to audit and finalize"
+                          >
+                            <LockOpenIcon className="h-4 w-4" />
+                          </button>
+                        )
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
@@ -282,8 +328,7 @@ export default function Episodes() {
                       {(episode.assets_generated === true || episode.assets_generated === 'true') ? 'Generated' : 'Pending'}
                     </span>
                   </TableCell>
-                  <TableCell>{episode.created_at ? formatDate(episode.created_at) : 'N/A'}</TableCell>
-                  <TableCell>
+                  <TableCell className="sticky right-0 bg-white">
                     <div className="flex space-x-1">
                       <Link to={`/episodes/${episode.id}/script-generation`}>
                         <Button variant="ghost" size="sm">
@@ -304,22 +349,13 @@ export default function Episodes() {
                           </Link>
                         </>
                       )}
-                      {episode.status === 'completed' && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleAudit(episode)}
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          <ShieldCheckIcon className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          </div>
         ) : (
           <EmptyState
             title="No episodes found"
@@ -506,20 +542,36 @@ export default function Episodes() {
                 <Button variant="secondary" onClick={() => setShowAuditModal(false)}>
                   Close
                 </Button>
-                {auditData.script_complete && auditData.audio_complete && auditData.database_status !== 'finalized' && (
+                {auditData.database_status === 'completed' ? (
                   <Button 
                     variant="primary"
-                    onClick={handleFinalize}
-                    disabled={isFinalizing}
+                    onClick={handleUnfinalize}
+                    disabled={isUnfinalizing}
                     className="inline-flex items-center"
                   >
-                    {isFinalizing ? (
+                    {isUnfinalizing ? (
                       <LoadingSpinner size="sm" className="mr-2" />
                     ) : (
-                      <CheckCircleIcon className="h-4 w-4 mr-2" />
+                      <ShieldCheckIcon className="h-4 w-4 mr-2" />
                     )}
-                    Finalize Episode
+                    Unfinalize Episode
                   </Button>
+                ) : (
+                  auditData.script_complete && auditData.audio_complete && (
+                    <Button 
+                      variant="primary"
+                      onClick={handleFinalize}
+                      disabled={isFinalizing}
+                      className="inline-flex items-center"
+                    >
+                      {isFinalizing ? (
+                        <LoadingSpinner size="sm" className="mr-2" />
+                      ) : (
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                      )}
+                      Finalize Episode
+                    </Button>
+                  )
                 )}
               </div>
             </>

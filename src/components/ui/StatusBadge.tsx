@@ -1,7 +1,7 @@
 import { cn } from '@/utils/classNames'
 
 interface StatusBadgeProps {
-  status: 'pending' | 'processing' | 'completed' | 'finalized' | 'failed'
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'finalized' | string
   className?: string
 }
 
@@ -19,8 +19,8 @@ const statusConfig = {
     classes: 'bg-green-100 text-green-800'
   },
   finalized: {
-    label: 'Finalized',
-    classes: 'bg-purple-100 text-purple-800'
+    label: 'Completed',  // Show as "Completed" for legacy data
+    classes: 'bg-green-100 text-green-800'
   },
   failed: {
     label: 'Failed',
@@ -29,7 +29,10 @@ const statusConfig = {
 }
 
 export default function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = statusConfig[status]
+  const config = statusConfig[status] || {
+    label: status || 'Unknown',
+    classes: 'bg-gray-100 text-gray-800'
+  }
 
   return (
     <span className={cn(

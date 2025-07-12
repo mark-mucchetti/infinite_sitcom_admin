@@ -132,6 +132,12 @@ export const episodesApi = {
     return { data: response, success: true }
   },
 
+  // Polling for status updates (until WebSockets are implemented)
+  getStatus: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.get(`/episodes/${id}`)
+    return { data: response, success: true }
+  },
+
   generateAudioManifest: async (id: string): Promise<ApiResponse<any>> => {
     const response = await apiClient.post(`/episodes/${id}/generate-audio-manifest`)
     return { data: response, success: true }
@@ -184,6 +190,11 @@ export const episodesApi = {
   // Finalization endpoints
   finalize: async (id: string): Promise<ApiResponse<any>> => {
     const response = await apiClient.post(`/episodes/${id}/finalize`)
+    return { data: response, success: true }
+  },
+
+  unfinalize: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/unfinalize`)
     return { data: response, success: true }
   },
 }

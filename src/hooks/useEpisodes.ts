@@ -40,8 +40,9 @@ export function useEpisodes(initialParams?: EpisodeListParams): UseEpisodesResul
   }
 
   useEffect(() => {
+    console.log('useEpisodes: fetching with params:', params)
     fetchEpisodes()
-  }, [params.page, params.limit, params.search, params.show_id, params.status])
+  }, [params.page, params.limit, params.search, params.show_id, params.status, params.season])
 
   const refetch = () => {
     fetchEpisodes()

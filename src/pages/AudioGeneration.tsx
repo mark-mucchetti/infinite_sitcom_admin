@@ -26,6 +26,7 @@ export default function AudioGeneration() {
   const [episode, setEpisode] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activePhase, setActivePhase] = useState<string | null>(null)
+  const [audioStatus, setAudioStatus] = useState<any>(null)
   const [phases, setPhases] = useState<AudioPhase[]>([
     {
       id: 'manifest',
@@ -65,24 +66,48 @@ export default function AudioGeneration() {
       const response = await episodesApi.get(id!)
       setEpisode(response.data)
       
-      // Update phase status based on episode data
-      updatePhaseStatus(response.data)
+      // Load detailed audio status
+      try {
+        const statusResponse = await episodesApi.getAudioStatus(id!)
+        setAudioStatus(statusResponse.data)
+        updatePhaseStatus(response.data, statusResponse.data)
+      } catch (error) {
+        // Audio status endpoint might not be available for episodes without audio
+        updatePhaseStatus(response.data)
+      }
     } catch (error) {
-      showToast('Failed to load episode', 'error')
+      showToast({
+        type: 'error',
+        title: 'Failed to load episode',
+        message: error instanceof Error ? error.message : 'An error occurred'
+      })
       console.error('Failed to load episode:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const updatePhaseStatus = (episodeData: any) => {
+  const updatePhaseStatus = (episodeData: any, audioStatusData?: any) => {
     setPhases(prev => prev.map(phase => {
-      // For now, we'll use the assets_generated flag to determine completion
-      // In a real implementation, you'd check individual phase status
-      if (episodeData.assets_generated === 'true') {
-        return { ...phase, status: 'completed' }
+      if (audioStatusData?.phases) {
+        // Use detailed audio status if available
+        switch (phase.id) {
+          case 'manifest':
+            return { ...phase, status: audioStatusData.phases.phase_1_manifest?.completed ? 'completed' : 'pending' }
+          case 'files':
+            return { ...phase, status: audioStatusData.phases.phase_2_files?.completed ? 'completed' : 'pending' }
+          case 'assembly':
+            return { ...phase, status: audioStatusData.phases.phase_3_assembly?.completed ? 'completed' : 'pending' }
+          default:
+            return phase
+        }
+      } else {
+        // Fallback to simple completion check
+        if (episodeData.assets_generated === 'true') {
+          return { ...phase, status: 'completed' }
+        }
+        return phase
       }
-      return phase
     }))
   }
 
@@ -93,29 +118,76 @@ export default function AudioGeneration() {
         p.id === phase.id ? { ...p, status: 'in_progress' } : p
       ))
 
-      showToast(`Starting ${phase.name}...`, 'info')
+      showToast({
+        type: 'info',
+        title: `Starting ${phase.name}...`
+      })
       
       // Call the appropriate API endpoint
       const apiMethod = episodesApi[phase.endpoint] as Function
-      await apiMethod(id!)
+      const phasePromise = apiMethod(id!)
       
-      setPhases(prev => prev.map(p => 
-        p.id === phase.id ? { ...p, status: 'completed' } : p
-      ))
+      // Poll for status every 10 seconds for individual phases (faster than full workflow)
+      const pollInterval = setInterval(async () => {
+        try {
+          const episodeResponse = await episodesApi.get(id!)
+          let phaseComplete = false
+          
+          try {
+            // Get detailed audio status
+            const statusResponse = await episodesApi.getAudioStatus(id!)
+            const audioStatusData = statusResponse.data
+            
+            // Check specific phase completion
+            if (phase.id === 'manifest' && audioStatusData.phases?.phase_1_manifest?.completed) {
+              phaseComplete = true
+            } else if (phase.id === 'files' && audioStatusData.phases?.phase_2_files?.completed) {
+              phaseComplete = true
+            } else if (phase.id === 'assembly' && audioStatusData.phases?.phase_3_assembly?.completed) {
+              phaseComplete = true
+            }
+            
+            // Update audio status for progress display
+            setAudioStatus(audioStatusData)
+          } catch (statusError) {
+            // Fallback to simple episode status if audio status endpoint fails
+            if (episodeResponse.data.assets_generated === 'true') {
+              phaseComplete = true
+            }
+          }
+          
+          if (phaseComplete) {
+            clearInterval(pollInterval)
+            setPhases(prev => prev.map(p => 
+              p.id === phase.id ? { ...p, status: 'completed' } : p
+            ))
+            showToast({
+              type: 'success',
+              title: `${phase.name} completed successfully!`
+            })
+            loadEpisode()
+            setActivePhase(null)
+          }
+        } catch (error) {
+          console.error('Error polling phase status:', error)
+        }
+      }, 10000)
       
-      showToast(`${phase.name} completed successfully!`, 'success')
-      
-      // Reload episode to get updated status
-      loadEpisode()
+      // Wait for phase to complete or fail
+      await phasePromise
+      clearInterval(pollInterval)
       
     } catch (error) {
       setPhases(prev => prev.map(p => 
         p.id === phase.id ? { ...p, status: 'error' } : p
       ))
       
-      showToast(`${phase.name} failed`, 'error')
+      showToast({
+        type: 'error',
+        title: `${phase.name} failed`,
+        message: error instanceof Error ? error.message : 'An error occurred'
+      })
       console.error(`${phase.name} failed:`, error)
-    } finally {
       setActivePhase(null)
     }
   }
@@ -123,17 +195,43 @@ export default function AudioGeneration() {
   const runFullWorkflow = async () => {
     try {
       setActivePhase('full-workflow')
-      showToast('Starting full audio generation workflow...', 'info')
+      showToast({
+        type: 'info',
+        title: 'Starting full audio generation workflow...'
+      })
       
-      await episodesApi.generateAudio(id!)
+      // Start the generation (this will take 5-10 minutes)
+      const generationPromise = episodesApi.generateAudio(id!)
       
-      showToast('Audio generation completed successfully!', 'success')
-      loadEpisode()
+      // Poll for status every 30 seconds
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await episodesApi.get(id!)
+          if (response.data.assets_generated === 'true') {
+            clearInterval(pollInterval)
+            showToast({
+              type: 'success',
+              title: 'Audio generation completed successfully!'
+            })
+            loadEpisode()
+            setActivePhase(null)
+          }
+        } catch (error) {
+          console.error('Error polling status:', error)
+        }
+      }, 30000)
+      
+      // Wait for generation to complete or fail
+      await generationPromise
+      clearInterval(pollInterval)
       
     } catch (error) {
-      showToast('Audio generation failed', 'error')
+      showToast({
+        type: 'error',
+        title: 'Audio generation failed',
+        message: error instanceof Error ? error.message : 'An error occurred'
+      })
       console.error('Audio generation failed:', error)
-    } finally {
       setActivePhase(null)
     }
   }
@@ -149,6 +247,31 @@ export default function AudioGeneration() {
       default:
         return '🔊'
     }
+  }
+
+  const renderProgressDetails = (phaseId: string) => {
+    if (!audioStatus?.phases) return null
+
+    const phaseData = audioStatus.phases[`phase_${phaseId === 'manifest' ? '1_manifest' : phaseId === 'files' ? '2_files' : '3_assembly'}`]
+    if (!phaseData) return null
+
+    return (
+      <div className="mt-2 text-xs text-gray-600">
+        {phaseId === 'manifest' && phaseData.voice_mappings && (
+          <p>Voice mappings: {Object.keys(phaseData.voice_mappings).length} characters</p>
+        )}
+        {phaseId === 'files' && (
+          <div>
+            {phaseData.dialogue_files && <p>Dialogue files: {phaseData.dialogue_files.generated || 0} generated</p>}
+            {phaseData.sfx_files && <p>SFX files: {phaseData.sfx_files.generated || 0} generated</p>}
+            {phaseData.total_files && <p>Total: {phaseData.generated || 0} / {phaseData.total_files} files</p>}
+          </div>
+        )}
+        {phaseId === 'assembly' && phaseData.duration_seconds && (
+          <p>Episode duration: {Math.round(phaseData.duration_seconds / 60)} minutes</p>
+        )}
+      </div>
+    )
   }
 
   if (loading) {
@@ -346,6 +469,7 @@ export default function AudioGeneration() {
                   {phase.status === 'in_progress' && (
                     <div className="mt-3">
                       <ProgressBar indeterminate />
+                      {audioStatus && renderProgressDetails(phase.id)}
                     </div>
                   )}
                 </div>

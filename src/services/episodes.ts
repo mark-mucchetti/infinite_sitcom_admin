@@ -23,6 +23,7 @@ export interface CreateEpisodeRequest {
 }
 
 export interface CreateEpisodeAIRequest {
+  show_id: string
   prompt: string
   season_finale?: boolean
 }
@@ -41,15 +42,31 @@ export interface UpdateEpisodeRequest {
 export const episodesApi = {
   // List episodes with filtering and pagination
   list: async (params?: EpisodeListParams): Promise<PaginatedResponse<Episode>> => {
-    const response: any = await apiClient.get('/episodes', params)
-    
-    // Transform backend response to frontend format
-    return {
-      data: response.episodes || [],
-      total: response.total || 0,
-      page: params?.page || 1,
-      limit: response.limit || 10,
-      total_pages: Math.ceil((response.total || 0) / (response.limit || 10))
+    try {
+      // Convert page-based pagination to offset-based for backend
+      const backendParams = {
+        ...params,
+        offset: params?.page ? (params.page - 1) * (params.limit || 10) : 0,
+      }
+      
+      // Remove page param as backend doesn't expect it
+      delete backendParams.page
+      
+      console.log('Episodes API: calling with params:', backendParams)
+      const response: any = await apiClient.get('/episodes', backendParams)
+      console.log('Episodes API: response:', response)
+      
+      // Transform backend response to frontend format
+      return {
+        data: response.episodes || [],
+        total: response.total || 0,
+        page: params?.page || 1,
+        limit: response.limit || 10,
+        total_pages: Math.ceil((response.total || 0) / (response.limit || 10))
+      }
+    } catch (error) {
+      console.error('Episodes API error:', error)
+      throw error
     }
   },
 
@@ -67,8 +84,13 @@ export const episodesApi = {
     apiClient.post('/episodes', data),
 
   // Create episode using AI generation
-  generateAI: (showId: string, data: CreateEpisodeAIRequest): Promise<ApiResponse<Episode>> =>
-    apiClient.post(`/episodes/generate?show_id=${showId}`, data),
+  generateAI: async (data: CreateEpisodeAIRequest): Promise<ApiResponse<Episode>> => {
+    const response = await apiClient.post(`/episodes/generate?show_id=${data.show_id}`, { prompt: data.prompt, season_finale: data.season_finale })
+    return {
+      data: response,
+      success: true
+    }
+  },
 
   // Update episode details
   update: (id: string, data: UpdateEpisodeRequest): Promise<ApiResponse<Episode>> =>
@@ -131,4 +153,37 @@ export const episodesApi = {
 
   reset: (id: string): Promise<ApiResponse<void>> =>
     apiClient.post(`/episodes/${id}/reset`),
+
+  // Script status
+  getScriptStatus: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.get(`/episodes/${id}/script-status`)
+    return {
+      data: response,
+      success: true
+    }
+  },
+
+  // Script files
+  getScriptFiles: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.get(`/episodes/${id}/script-files`)
+    return {
+      data: response,
+      success: true
+    }
+  },
+
+  // Audio status
+  getAudioStatus: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.get(`/episodes/${id}/audio-status`)
+    return {
+      data: response,
+      success: true
+    }
+  },
+
+  // Finalization endpoints
+  finalize: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post(`/episodes/${id}/finalize`)
+    return { data: response, success: true }
+  },
 }

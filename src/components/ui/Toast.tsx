@@ -1,6 +1,12 @@
 import { Fragment, useEffect } from 'react'
 import { Transition } from '@headlessui/react'
-import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  ExclamationTriangleIcon, 
+  InformationCircleIcon, 
+  XMarkIcon 
+} from '@heroicons/react/24/outline'
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info'
 

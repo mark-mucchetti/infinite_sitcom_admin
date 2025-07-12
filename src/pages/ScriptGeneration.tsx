@@ -26,6 +26,7 @@ export default function ScriptGeneration() {
   const [episode, setEpisode] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activePhase, setActivePhase] = useState<string | null>(null)
+  const [scriptStatus, setScriptStatus] = useState<any>(null)
   const [phases, setPhases] = useState<ScriptPhase[]>([
     {
       id: 'beat-sheet',
@@ -73,22 +74,40 @@ export default function ScriptGeneration() {
       const response = await episodesApi.get(id!)
       setEpisode(response.data)
       
-      // Update phase status based on episode data
-      updatePhaseStatus(response.data)
+      // Load script status for detailed progress
+      const statusResponse = await episodesApi.getScriptStatus(id!)
+      setScriptStatus(statusResponse.data)
+      
+      // Update phase status based on script status
+      updatePhaseStatus(statusResponse.data)
     } catch (error) {
-      showToast('Failed to load episode', 'error')
+      showToast({
+        type: 'error',
+        title: 'Failed to load episode',
+        message: error instanceof Error ? error.message : 'An error occurred'
+      })
       console.error('Failed to load episode:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const updatePhaseStatus = (episodeData: any) => {
+  const updatePhaseStatus = (statusData: any) => {
     setPhases(prev => prev.map(phase => {
-      // For now, we'll use the script_generated flag to determine completion
-      // In a real implementation, you'd check individual phase files
-      if (episodeData.script_generated === 'true') {
-        return { ...phase, status: 'completed' }
+      // Update based on actual script status
+      if (statusData.phases) {
+        switch (phase.id) {
+          case 'beat-sheet':
+            return { ...phase, status: statusData.phases.phase_1_beat_sheet?.completed ? 'completed' : 'pending' }
+          case 'scenes':
+            return { ...phase, status: statusData.phases.phase_2_scenes?.completed ? 'completed' : 'pending' }
+          case 'editorial':
+            return { ...phase, status: statusData.phases.phase_3_editorial?.completed ? 'completed' : 'pending' }
+          case 'teleplay':
+            return { ...phase, status: statusData.phases.phase_4_teleplay?.completed ? 'completed' : 'pending' }
+          default:
+            return phase
+        }
       }
       return phase
     }))
@@ -101,7 +120,10 @@ export default function ScriptGeneration() {
         p.id === phase.id ? { ...p, status: 'in_progress' } : p
       ))
 
-      showToast(`Starting ${phase.name}...`, 'info')
+      showToast({
+        type: 'info',
+        title: `Starting ${phase.name}...`
+      })
       
       // Call the appropriate API endpoint
       const apiMethod = episodesApi[phase.endpoint] as Function
@@ -111,7 +133,10 @@ export default function ScriptGeneration() {
         p.id === phase.id ? { ...p, status: 'completed' } : p
       ))
       
-      showToast(`${phase.name} completed successfully!`, 'success')
+      showToast({
+        type: 'success',
+        title: `${phase.name} completed successfully!`
+      })
       
       // Reload episode to get updated status
       loadEpisode()
@@ -121,7 +146,11 @@ export default function ScriptGeneration() {
         p.id === phase.id ? { ...p, status: 'error' } : p
       ))
       
-      showToast(`${phase.name} failed`, 'error')
+      showToast({
+        type: 'error',
+        title: `${phase.name} failed`,
+        message: error instanceof Error ? error.message : 'An error occurred'
+      })
       console.error(`${phase.name} failed:`, error)
     } finally {
       setActivePhase(null)
@@ -131,18 +160,60 @@ export default function ScriptGeneration() {
   const runFullWorkflow = async () => {
     try {
       setActivePhase('full-workflow')
-      showToast('Starting full script generation workflow...', 'info')
+      showToast({
+        type: 'info',
+        title: 'Starting full script generation workflow...'
+      })
       
-      await episodesApi.generateScript(id!)
+      // Start the generation (this will take 8-10 minutes)
+      const generationPromise = episodesApi.generateScript(id!)
       
-      showToast('Script generation completed successfully!', 'success')
-      loadEpisode()
+      // Poll for status every 30 seconds
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await episodesApi.get(id!)
+          if (response.data.script_generated === 'true') {
+            clearInterval(pollInterval)
+            showToast({
+              type: 'success',
+              title: 'Script generation completed successfully!'
+            })
+            loadEpisode()
+            setActivePhase(null)
+          }
+        } catch (error) {
+          console.error('Error polling status:', error)
+        }
+      }, 30000)
+      
+      // Wait for generation to complete or fail
+      await generationPromise
+      clearInterval(pollInterval)
       
     } catch (error) {
-      showToast('Script generation failed', 'error')
+      showToast({
+        type: 'error',
+        title: 'Script generation failed',
+        message: error instanceof Error ? error.message : 'An error occurred'
+      })
       console.error('Script generation failed:', error)
-    } finally {
       setActivePhase(null)
+    }
+  }
+
+  const viewPhaseOutput = (phaseId: string) => {
+    if (phaseId === 'beat-sheet') {
+      // View beat sheet JSON data
+      window.open(`/api/episodes/${id}/beat-sheet`, '_blank')
+    } else if (phaseId === 'scenes') {
+      // View scenes JSON data
+      window.open(`/api/episodes/${id}/scenes`, '_blank')
+    } else if (phaseId === 'editorial') {
+      // View continuity notes
+      window.open(`/api/episodes/${id}/continuity`, '_blank')
+    } else if (phaseId === 'teleplay') {
+      // View teleplay PDF
+      window.open(`/api/episodes/${id}/teleplay`, '_blank')
     }
   }
 
@@ -301,6 +372,16 @@ export default function ScriptGeneration() {
                           <LoadingSpinner size="small" />
                           <span className="ml-2 text-sm text-gray-600">Processing...</span>
                         </div>
+                      )}
+                      
+                      {phase.status === 'completed' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => viewPhaseOutput(phase.id)}
+                        >
+                          View
+                        </Button>
                       )}
                       
                       <Button

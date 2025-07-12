@@ -50,6 +50,7 @@ export default function ScriptReview() {
   const [episode, setEpisode] = useState<any>(null)
   const [beatSheet, setBeatSheet] = useState<BeatSheetData | null>(null)
   const [scenes, setScenes] = useState<SceneData[]>([])
+  const [continuity, setContinuity] = useState<any>(null)
   const [selectedScene, setSelectedScene] = useState<number>(1)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'beat-sheet' | 'scenes' | 'continuity'>('beat-sheet')
@@ -68,40 +69,46 @@ export default function ScriptReview() {
       const episodeResponse = await episodesApi.get(id!)
       setEpisode(episodeResponse.data)
       
-      // In a real implementation, you'd have endpoints to fetch:
-      // - Beat sheet data: GET /episodes/:id/beat-sheet
-      // - Scene data: GET /episodes/:id/scenes
-      // - Continuity notes: GET /episodes/:id/continuity
+      // Load actual script content
+      try {
+        // Load beat sheet data
+        const beatSheetResponse = await fetch(`/api/episodes/${id}/beat-sheet`)
+        if (beatSheetResponse.ok) {
+          const beatSheetData = await beatSheetResponse.json()
+          setBeatSheet(beatSheetData)
+        }
+      } catch (error) {
+        console.log('Beat sheet not available:', error)
+      }
       
-      // For now, we'll show placeholder data
-      setBeatSheet({
-        episode_title: episodeResponse.data.title,
-        season_episode: `S${episodeResponse.data.season_number}E${episodeResponse.data.episode_number}`,
-        characters: [
-          { name: "Maya", type: "main", role_in_episode: "Coffee shop owner dealing with difficult customer" },
-          { name: "Marcus", type: "regular", role_in_episode: "Employee advocating for boundaries" },
-          { name: "Riley", type: "regular", role_in_episode: "Employee suggesting accommodation" }
-        ],
-        locations: [
-          { name: "Coffee Shop Main Floor", description: "Busy morning rush atmosphere" },
-          { name: "Coffee Shop Back Office", description: "Private space for staff discussions" }
-        ],
-        scenes: [
-          {
-            scene_number: 1,
-            location: "Coffee Shop Main Floor",
-            characters: ["Maya", "Marcus", "Riley"],
-            plot_advancement: {
-              a_plot: "Introduces the demanding customer situation",
-              b_plot: "Shows staff dynamic and different approaches"
-            },
-            runtime_minutes: 3.5
-          }
-        ]
-      })
+      try {
+        // Load scene data
+        const scenesResponse = await fetch(`/api/episodes/${id}/scenes`)
+        if (scenesResponse.ok) {
+          const scenesData = await scenesResponse.json()
+          setScenes(scenesData.scenes)
+        }
+      } catch (error) {
+        console.log('Scenes not available:', error)
+      }
+      
+      try {
+        // Load continuity data
+        const continuityResponse = await fetch(`/api/episodes/${id}/continuity`)
+        if (continuityResponse.ok) {
+          const continuityData = await continuityResponse.json()
+          setContinuity(continuityData)
+        }
+      } catch (error) {
+        console.log('Continuity not available:', error)
+      }
       
     } catch (error) {
-      showToast('Failed to load script data', 'error')
+      showToast({
+        type: 'error',
+        title: 'Failed to load script data',
+        message: error instanceof Error ? error.message : 'An error occurred'
+      })
       console.error('Failed to load script data:', error)
     } finally {
       setLoading(false)
@@ -129,7 +136,7 @@ export default function ScriptReview() {
     )
   }
 
-  if (!episode || episode.script_generated !== 'true') {
+  if (!episode || (episode.script_generated !== true && episode.script_generated !== 'true')) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 mb-4">
@@ -176,7 +183,7 @@ export default function ScriptReview() {
               className="flex items-center"
             >
               <DocumentIcon className="h-4 w-4 mr-2" />
-              Download PDF
+              View Teleplay PDF
             </Button>
             <Button
               onClick={() => navigate(`/episodes/${id}/script-generation`)}
@@ -225,7 +232,7 @@ export default function ScriptReview() {
             <div className="bg-white shadow rounded-lg p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Characters</h3>
               <div className="space-y-3">
-                {beatSheet.characters.map((character, index) => (
+                {beatSheet.characters?.map((character: any, index: number) => (
                   <div key={index} className="border-l-4 border-primary-500 pl-4">
                     <div className="flex items-center">
                       <h4 className="font-medium text-gray-900">{character.name}</h4>
@@ -242,7 +249,7 @@ export default function ScriptReview() {
             <div className="bg-white shadow rounded-lg p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Locations</h3>
               <div className="space-y-3">
-                {beatSheet.locations.map((location, index) => (
+                {beatSheet.locations?.map((location: any, index: number) => (
                   <div key={index} className="border-l-4 border-green-500 pl-4">
                     <h4 className="font-medium text-gray-900">{location.name}</h4>
                     <p className="text-sm text-gray-600 mt-1">{location.description}</p>
@@ -256,7 +263,7 @@ export default function ScriptReview() {
           <div className="bg-white shadow rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Scene Breakdown</h3>
             <div className="space-y-4">
-              {beatSheet.scenes.map((scene) => (
+              {beatSheet.scenes?.map((scene: any) => (
                 <div key={scene.scene_number} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-medium text-gray-900">
@@ -268,9 +275,9 @@ export default function ScriptReview() {
                   </div>
                   
                   <div className="text-sm text-gray-600 space-y-2">
-                    <p><strong>Characters:</strong> {scene.characters.join(', ')}</p>
+                    <p><strong>Characters:</strong> {scene.characters?.join(', ')}</p>
                     
-                    {Object.entries(scene.plot_advancement).map(([plot, advancement]) => (
+                    {scene.plot_advancement && Object.entries(scene.plot_advancement).map(([plot, advancement]) => (
                       <p key={plot}>
                         <strong>{plot.toUpperCase()}:</strong> {advancement}
                       </p>
@@ -288,37 +295,84 @@ export default function ScriptReview() {
           <div className="p-6 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">Scene Viewer</h3>
             <p className="text-sm text-gray-600 mt-1">
-              Detailed dialogue with timing and performance notes
+              Generated scene files available
             </p>
             
             {/* Scene selector */}
-            {beatSheet && (
+            {scenes.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
-                {beatSheet.scenes.map((scene) => (
-                  <button
-                    key={scene.scene_number}
-                    onClick={() => setSelectedScene(scene.scene_number)}
-                    className={`px-3 py-1 rounded-md text-sm font-medium ${
-                      selectedScene === scene.scene_number
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    Scene {scene.scene_number}
-                  </button>
+                {scenes.map((scene) => (
+                  scene.scene_number && scene.location && (
+                    <button
+                      key={scene.scene_number}
+                      onClick={() => setSelectedScene(scene.scene_number)}
+                      className={`px-3 py-1 rounded-md text-sm font-medium ${
+                        selectedScene === scene.scene_number
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Scene {scene.scene_number}
+                    </button>
+                  )
                 ))}
               </div>
             )}
           </div>
           
           <div className="p-6">
-            <div className="text-center text-gray-500">
-              <DocumentIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p>Scene data would be loaded from the backend</p>
-              <p className="text-sm mt-2">
-                API endpoint: <code>GET /episodes/{id}/scenes/{scene.scene_number}</code>
-              </p>
-            </div>
+            {scenes.length > 0 ? (
+              (() => {
+                const currentScene = scenes.find(scene => scene.scene_number === selectedScene)
+                if (!currentScene) return <div>Scene not found</div>
+                
+                return (
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-gray-900">
+                        Scene {currentScene.scene_number}: {currentScene.location}
+                      </h4>
+                      <span className="text-sm text-gray-500">
+                        {currentScene.runtime_minutes} min
+                      </span>
+                    </div>
+                  
+                    <div className="space-y-3">
+                      {currentScene.lines?.map((line: any, index: number) => (
+                        <div key={index} className="text-sm">
+                          {line.character === 'SFX' ? (
+                            <div className="italic text-gray-500">
+                              [SFX: {line.dialogue}]
+                            </div>
+                          ) : line.character === 'audience' ? (
+                            <div className="italic text-blue-600">
+                              [AUDIENCE: {line.delivery}]
+                            </div>
+                          ) : line.character === 'CHARACTER_ENTER' || line.character === 'CHARACTER_EXIT' ? (
+                            <div className="italic text-green-600">
+                              [{line.dialogue} {line.delivery}]
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="font-medium text-gray-900">{line.character}:</span>
+                              <span className="ml-2">{line.dialogue}</span>
+                              {line.delivery && (
+                                <span className="ml-2 text-gray-500 italic">({line.delivery})</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()
+            ) : (
+              <div className="text-center text-gray-500">
+                <DocumentIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <p>No scene files generated yet</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -326,15 +380,61 @@ export default function ScriptReview() {
       {activeTab === 'continuity' && (
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Continuity Notes</h3>
-          <div className="text-center text-gray-500">
-            <p>Continuity tracking would show:</p>
-            <ul className="text-sm mt-4 space-y-1 text-left max-w-md mx-auto">
-              <li>• Scene-level continuity notes (3 per scene)</li>
-              <li>• Episode-level continuity notes (3 major developments)</li>
-              <li>• Cross-episode continuity tracking</li>
-              <li>• Character development notes</li>
-            </ul>
-          </div>
+          
+          {continuity ? (
+            <div className="space-y-8">
+              {/* Episode-Level Continuity */}
+              {continuity.episode_continuity && continuity.episode_continuity.length > 0 && (
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Episode-Level Continuity</h4>
+                  <div className="space-y-4">
+                    {continuity.episode_continuity.map((note: any, index: number) => (
+                      <div key={index} className="border-l-4 border-blue-500 pl-4">
+                        <p className="text-gray-900">{note}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Scene-Level Continuity */}
+              {continuity.scene_continuity && continuity.scene_continuity.length > 0 && (
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Scene-Level Continuity</h4>
+                  <div className="space-y-6">
+                    {continuity.scene_continuity.map((sceneData: any, sceneIndex: number) => (
+                      <div key={sceneIndex} className="border rounded-lg p-4">
+                        <h5 className="font-medium text-gray-900 mb-3">
+                          Scene {sceneData.scene_number}: {sceneData.location}
+                        </h5>
+                        <div className="space-y-2">
+                          {sceneData.continuity_notes && sceneData.continuity_notes.map((note: any, noteIndex: number) => (
+                            <div key={noteIndex} className="border-l-4 border-green-500 pl-4">
+                              <p className="text-sm text-gray-700">{note}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* No continuity data */}
+              {(!continuity.episode_continuity || continuity.episode_continuity.length === 0) && 
+               (!continuity.scene_continuity || continuity.scene_continuity.length === 0) && (
+                <div className="text-center text-gray-500">
+                  <p>No continuity notes available for this episode.</p>
+                  <p className="text-sm mt-2">Continuity notes are generated during Phase 2 (scenes) and Phase 3 (editorial pass).</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center text-gray-500">
+              <p>No continuity data available for this episode.</p>
+              <p className="text-sm mt-2">Continuity notes are generated during the script generation process.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { cn } from '@/utils/classNames'
 
 interface StatusBadgeProps {
-  status: 'pending' | 'processing' | 'completed' | 'failed'
+  status: 'pending' | 'processing' | 'completed' | 'finalized' | 'failed'
   className?: string
 }
 
@@ -17,6 +17,10 @@ const statusConfig = {
   completed: {
     label: 'Completed',
     classes: 'bg-green-100 text-green-800'
+  },
+  finalized: {
+    label: 'Finalized',
+    classes: 'bg-purple-100 text-purple-800'
   },
   failed: {
     label: 'Failed',

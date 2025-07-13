@@ -9,7 +9,11 @@ export default function Dashboard() {
   const { loading: showsLoading, total: totalShows } = useShows({ page: 1, limit: 100 })
   const { episodes, loading: episodesLoading, total: totalEpisodes } = useEpisodes({ page: 1, limit: 1000 })
 
-  const inProgressCount = episodes.filter(ep => ep.status === 'processing').length
+  // Count episodes that are partially complete (have script but no audio)
+  const inProgressCount = episodes.filter(ep => 
+    (ep.script_generated === true || ep.script_generated === 'true') &&
+    (ep.assets_generated !== true && ep.assets_generated !== 'true')
+  ).length
 
   return (
     <div>
@@ -96,13 +100,13 @@ export default function Dashboard() {
               <Link to="/shows">
                 <Button className="flex items-center">
                   <PlusIcon className="h-4 w-4 mr-2" />
-                  Create New Show
+                  Manage Shows
                 </Button>
               </Link>
               <Link to="/episodes">
                 <Button variant="secondary" className="flex items-center">
                   <PlusIcon className="h-4 w-4 mr-2" />
-                  Generate Episode
+                  Manage Episodes
                 </Button>
               </Link>
             </div>
@@ -158,14 +162,9 @@ export default function Dashboard() {
                         
                         {/* Quick Actions */}
                         <div className="flex space-x-1">
-                          <Link to={`/episodes/${episode.id}/script-generation`}>
-                            <Button variant="ghost" size="sm">Script</Button>
+                          <Link to={`/episodes/${episode.id}`}>
+                            <Button variant="ghost" size="sm">View</Button>
                           </Link>
-                          {episode.script_generated === 'true' && (
-                            <Link to={`/episodes/${episode.id}/audio-generation`}>
-                              <Button variant="ghost" size="sm">Audio</Button>
-                            </Link>
-                          )}
                         </div>
                       </div>
                     </div>

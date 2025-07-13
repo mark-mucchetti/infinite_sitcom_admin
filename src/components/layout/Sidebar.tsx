@@ -16,10 +16,6 @@ const navigation = [
   { name: 'Shows', href: '/shows', icon: TvIcon },
   { name: 'Episodes', href: '/episodes', icon: FilmIcon },
   { name: 'Characters', href: '/characters', icon: UserGroupIcon },
-  { name: 'Scripts', href: '/scripts', icon: DocumentTextIcon },
-  { name: 'Audio', href: '/audio', icon: SpeakerWaveIcon },
-  { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ]
 
 export default function Sidebar() {

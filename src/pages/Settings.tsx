@@ -12,9 +12,9 @@ export default function Settings() {
   
   const handleSaveSettings = () => {
     showToast({
-      type: 'success',
-      title: 'Settings saved',
-      message: 'Your preferences have been updated successfully.'
+      type: 'warning',
+      title: 'Settings not functional',
+      message: 'Settings are not yet connected to the backend. These changes are not saved.'
     })
   }
 

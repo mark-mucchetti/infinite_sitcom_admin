@@ -11,7 +11,6 @@ import ScriptGeneration from './pages/ScriptGeneration'
 import ScriptReview from './pages/ScriptReview'
 import Audio from './pages/Audio'
 import AudioGeneration from './pages/AudioGeneration'
-import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import ToastContainer from './components/ui/ToastContainer'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -33,7 +32,6 @@ function App() {
             <Route path="/characters" element={<Characters />} />
             <Route path="/scripts" element={<Scripts />} />
             <Route path="/audio" element={<Audio />} />
-            <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/episodes/:id/script-generation" element={<ScriptGeneration />} />
             <Route path="/episodes/:id/script-review" element={<ScriptReview />} />
